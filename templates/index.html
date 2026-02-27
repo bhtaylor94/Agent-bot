@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lateral Strategist</title>
+  <style>
+    :root {
+      --bg: #0d0d0f;
+      --surface: #16161a;
+      --border: #2a2a32;
+      --text: #e2e2e8;
+      --muted: #6b6b7a;
+      --accent-reframe: #7c6af7;
+      --accent-assumptions: #f7836a;
+      --accent-angles: #4fc0a0;
+      --accent-move: #f7c96a;
+      --accent-risks: #f76a8a;
+      --accent-rec: #6af7c9;
+      --user-bubble: #1e2a3a;
+      --agent-bubble: #16161a;
+      --input-bg: #1a1a20;
+      --btn: #7c6af7;
+      --btn-hover: #9585f9;
+      --scrollbar: #2a2a32;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 14px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      color: var(--accent-reframe);
+      text-transform: uppercase;
+    }
+
+    .logo span {
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    select {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    select:focus { border-color: var(--accent-reframe); }
+
+    .btn-reset {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all 0.15s;
+    }
+
+    .btn-reset:hover {
+      border-color: var(--accent-risks);
+      color: var(--accent-risks);
+    }
+
+    /* ── Chat window ── */
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      scroll-behavior: smooth;
+    }
+
+    #chat::-webkit-scrollbar { width: 6px; }
+    #chat::-webkit-scrollbar-track { background: transparent; }
+    #chat::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      max-width: 85%;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .message.agent {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    .msg-label {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .msg-bubble {
+      padding: 14px 18px;
+      border-radius: 10px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .message.user .msg-bubble {
+      background: var(--user-bubble);
+      border: 1px solid #2a3a4a;
+      color: var(--text);
+    }
+
+    .message.agent .msg-bubble {
+      background: var(--agent-bubble);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 100%;
+      max-width: 760px;
+    }
+
+    /* ── Section rendering ── */
+    .section-block {
+      margin: 10px 0;
+    }
+
+    .section-block:first-child { margin-top: 0; }
+
+    .section-label {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .section-label.reframe        { background: #2a1f6a; color: var(--accent-reframe); }
+    .section-label.assumptions     { background: #3a1f15; color: var(--accent-assumptions); }
+    .section-label.angles          { background: #0f2e26; color: var(--accent-angles); }
+    .section-label.move            { background: #2e2510; color: var(--accent-move); }
+    .section-label.risks           { background: #2e1020; color: var(--accent-risks); }
+    .section-label.recommendation  { background: #0f2e22; color: var(--accent-rec); }
+    .section-label.default         { background: #1e1e26; color: var(--muted); }
+
+    .section-body {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text);
+      padding-left: 2px;
+    }
+
+    /* ── Thinking indicator ── */
+    .thinking {
+      display: flex;
+      gap: 5px;
+      padding: 10px 0 4px;
+    }
+
+    .dot {
+      width: 6px; height: 6px;
+      background: var(--muted);
+      border-radius: 50%;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+      40%            { opacity: 1;   transform: scale(1); }
+    }
+
+    /* ── Input area ── */
+    #input-area {
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 16px 24px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+
+    #prompt {
+      flex: 1;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: none;
+      min-height: 48px;
+      max-height: 160px;
+      outline: none;
+      line-height: 1.5;
+      transition: border-color 0.15s;
+    }
+
+    #prompt:focus { border-color: var(--accent-reframe); }
+    #prompt::placeholder { color: var(--muted); }
+
+    #send-btn {
+      background: var(--btn);
+      border: none;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    #send-btn:hover { background: var(--btn-hover); }
+    #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty-state .glyph {
+      font-size: 40px;
+      line-height: 1;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      max-width: 340px;
+      line-height: 1.6;
+    }
+
+    /* ── Error banner ── */
+    .error-msg {
+      background: #2e1020;
+      border: 1px solid var(--accent-risks);
+      color: var(--accent-risks);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      align-self: flex-start;
+      max-width: 600px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Lateral <span>///</span> Strategist</div>
+  <div class="controls">
+    <select id="model-select">
+      <option value="">Loading models…</option>
+    </select>
+    <button class="btn-reset" onclick="resetChat()">↺ Reset</button>
+  </div>
+</header>
+
+<div id="chat">
+  <div class="empty-state" id="empty-state">
+    <div class="glyph">⊹</div>
+    <p>Describe a problem, decision, or challenge. The Lateral Strategist will reframe it, surface hidden assumptions, and give you a concrete strategic move.</p>
+  </div>
+</div>
+
+<div id="input-area">
+  <textarea
+    id="prompt"
+    placeholder="What's the problem you're facing?"
+    rows="1"
+    onkeydown="handleKey(event)"
+    oninput="autoResize(this)"
+  ></textarea>
+  <button id="send-btn" onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+  // ── State ──
+  let messages = [];
+  let isStreaming = false;
+  let currentModel = "";
+
+  // ── Section definitions ──
+  const SECTIONS = [
+    { key: "REFRAME",                    cls: "reframe",       label: "Reframe" },
+    { key: "HIDDEN ASSUMPTIONS",         cls: "assumptions",   label: "Hidden Assumptions" },
+    { key: "ALTERNATIVE ANGLES",         cls: "angles",        label: "Alternative Angles" },
+    { key: "STRATEGIC MOVE",             cls: "move",          label: "Strategic Move" },
+    { key: "RISKS & SECOND-ORDER EFFECTS", cls: "risks",       label: "Risks & Second-Order Effects" },
+    { key: "FINAL RECOMMENDATION",       cls: "recommendation",label: "Final Recommendation" },
+  ];
+
+  // ── Load models ──
+  async function loadModels() {
+    const sel = document.getElementById("model-select");
+    try {
+      const res = await fetch("/models");
+      const data = await res.json();
+      if (data.models && data.models.length > 0) {
+        sel.innerHTML = data.models
+          .map(m => `<option value="${m}">${m}</option>`)
+          .join("");
+        currentModel = data.models[0];
+      } else {
+        sel.innerHTML = `<option value="">No models found</option>`;
+      }
+    } catch {
+      sel.innerHTML = `<option value="">Ollama unavailable</option>`;
+    }
+    sel.addEventListener("change", () => { currentModel = sel.value; });
+  }
+
+  // ── Parse and render response sections ──
+  function renderAgentContent(text) {
+    // Build a regex that splits on ## SECTION headings
+    const sectionKeys = SECTIONS.map(s => s.key);
+    const pattern = new RegExp(
+      `(?:^|\\n)##\\s*(${sectionKeys.join("|")})\\s*\\n`,
+      "gi"
+    );
+
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    const regex = new RegExp(pattern.source, pattern.flags);
+
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: "text", content: text.slice(lastIndex, match.index) });
+      }
+      parts.push({ type: "section", key: match[1].toUpperCase(), start: regex.lastIndex });
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      parts.push({ type: "text", content: text.slice(lastIndex) });
+    }
+
+    // Collapse adjacent sections: pair each section header with following text
+    const collapsed = [];
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      if (p.type === "section") {
+        const nextText = (parts[i + 1] && parts[i + 1].type === "text")
+          ? parts[i + 1].content.trim()
+          : "";
+        collapsed.push({ type: "section", key: p.key, content: nextText });
+        if (parts[i + 1] && parts[i + 1].type === "text") i++;
+      } else if (p.content.trim()) {
+        collapsed.push({ type: "text", content: p.content.trim() });
+      }
+    }
+
+    if (collapsed.length === 0) {
+      const div = document.createElement("div");
+      div.className = "section-body";
+      div.textContent = text;
+      return div;
+    }
+
+    const wrapper = document.createDocumentFragment();
+
+    for (const part of collapsed) {
+      if (part.type === "text" && part.content) {
+        const block = document.createElement("div");
+        block.className = "section-block";
+        const body = document.createElement("div");
+        body.className = "section-body";
+        body.textContent = part.content;
+        block.appendChild(body);
+        wrapper.appendChild(block);
+      } else if (part.type === "section") {
+        const meta = SECTIONS.find(s => s.key === part.key) || { cls: "default", label: part.key };
+        const block = document.createElement("div");
+        block.className = "section-block";
+
+        const label = document.createElement("div");
+        label.className = `section-label ${meta.cls}`;
+        label.textContent = meta.label;
+
+        const body = document.createElement("div");
+        body.className = "section-body";
+        body.textContent = part.content;
+
+        block.appendChild(label);
+        block.appendChild(body);
+        wrapper.appendChild(block);
+      }
+    }
+    return wrapper;
+  }
+
+  // ── Chat UI helpers ──
+  function hideEmpty() {
+    const e = document.getElementById("empty-state");
+    if (e) e.remove();
+  }
+
+  function appendUserMessage(text) {
+    hideEmpty();
+    const chat = document.getElementById("chat");
+    const div = document.createElement("div");
+    div.className = "message user";
+    div.innerHTML = `<div class="msg-label">You</div><div class="msg-bubble">${escHtml(text)}</div>`;
+    chat.appendChild(div);
+    scrollChat();
+  }
+
+  function appendThinking() {
+    hideEmpty();
+    const chat = document.getElementById("chat");
+    const div = document.createElement("div");
+    div.className = "message agent";
+    div.id = "agent-thinking";
+    div.innerHTML = `
+      <div class="msg-label">Lateral Strategist</div>
+      <div class="msg-bubble">
+        <div class="thinking"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      </div>`;
+    chat.appendChild(div);
+    scrollChat();
+    return div;
+  }
+
+  function startAgentMessage() {
+    const thinking = document.getElementById("agent-thinking");
+    if (thinking) thinking.remove();
+
+    const chat = document.getElementById("chat");
+    const div = document.createElement("div");
+    div.className = "message agent";
+    div.id = "agent-streaming";
+
+    const label = document.createElement("div");
+    label.className = "msg-label";
+    label.textContent = "Lateral Strategist";
+
+    const bubble = document.createElement("div");
+    bubble.className = "msg-bubble";
+    bubble.id = "agent-bubble";
+
+    div.appendChild(label);
+    div.appendChild(bubble);
+    chat.appendChild(div);
+    scrollChat();
+    return bubble;
+  }
+
+  function finalizeAgentMessage(fullText) {
+    const bubble = document.getElementById("agent-bubble");
+    if (!bubble) return;
+    bubble.id = "";
+    bubble.innerHTML = "";
+    bubble.appendChild(renderAgentContent(fullText));
+    const streamDiv = document.getElementById("agent-streaming");
+    if (streamDiv) streamDiv.id = "";
+    scrollChat();
+  }
+
+  function appendError(msg) {
+    const thinking = document.getElementById("agent-thinking");
+    if (thinking) thinking.remove();
+    const chat = document.getElementById("chat");
+    const div = document.createElement("div");
+    div.className = "error-msg";
+    div.textContent = "⚠ " + msg;
+    chat.appendChild(div);
+    scrollChat();
+  }
+
+  function scrollChat() {
+    const chat = document.getElementById("chat");
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function escHtml(str) {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  // ── Send message ──
+  async function sendMessage() {
+    if (isStreaming) return;
+    const input = document.getElementById("prompt");
+    const text = input.value.trim();
+    if (!text || !currentModel) return;
+
+    isStreaming = true;
+    document.getElementById("send-btn").disabled = true;
+    input.value = "";
+    autoResize(input);
+
+    messages.push({ role: "user", content: text });
+    appendUserMessage(text);
+    appendThinking();
+
+    let fullResponse = "";
+    let bubble = null;
+
+    try {
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: currentModel, messages }),
+      });
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split("\n");
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6).trim();
+          if (payload === "[DONE]") continue;
+
+          try {
+            const obj = JSON.parse(payload);
+            if (obj.error) {
+              appendError(obj.error);
+              isStreaming = false;
+              document.getElementById("send-btn").disabled = false;
+              return;
+            }
+            if (obj.content) {
+              if (!bubble) bubble = startAgentMessage();
+              fullResponse += obj.content;
+              // Show raw text while streaming
+              bubble.textContent = fullResponse;
+              scrollChat();
+            }
+          } catch { /* ignore parse errors */ }
+        }
+      }
+    } catch (err) {
+      appendError(err.message || "Connection failed");
+      isStreaming = false;
+      document.getElementById("send-btn").disabled = false;
+      return;
+    }
+
+    // Finalize: replace raw text with parsed sections
+    if (fullResponse) {
+      finalizeAgentMessage(fullResponse);
+      messages.push({ role: "assistant", content: fullResponse });
+    }
+
+    isStreaming = false;
+    document.getElementById("send-btn").disabled = false;
+    document.getElementById("prompt").focus();
+  }
+
+  // ── Reset ──
+  function resetChat() {
+    messages = [];
+    const chat = document.getElementById("chat");
+    chat.innerHTML = `
+      <div class="empty-state" id="empty-state">
+        <div class="glyph">⊹</div>
+        <p>Describe a problem, decision, or challenge. The Lateral Strategist will reframe it, surface hidden assumptions, and give you a concrete strategic move.</p>
+      </div>`;
+  }
+
+  // ── Input helpers ──
+  function autoResize(el) {
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 160) + "px";
+  }
+
+  function handleKey(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  // ── Init ──
+  loadModels();
+  document.getElementById("prompt").focus();
+</script>
+</body>
+</html>
